@@ -1,548 +1,935 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dragon Tiers - Official Site</title>
-    <style>
-        :root {
-            --bg-color: #0f0f13;
-            --card-bg: #1a1a24;
-            --text-main: #ffffff;
-            --text-sec: #a0a0b0;
-            
-            /* Tier Colors */
-            --s-color: #ffd75e; /* Gold */
-            --a-color: #ff2fd6; /* Pink/Magic */
-            --b-color: #00f0ff; /* Ice */
-            --c-color: #45ff9c; /* Nature */
-            --d-color: #ff5470; /* Fire */
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANIME TIER LIST — Осенний неоновый рейтинг с 3D</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/unbounded@5.0.2/500.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/unbounded@5.0.2/700.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/unbounded@5.0.2/900.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/rubik@5.0.2/400.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/rubik@5.0.2/500.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/rubik@5.0.2/700.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.6.0/confetti.min.js"></script>
+<style>
+@property --spin{syntax:'<angle>';initial-value:0deg;inherits:false}
+@property --tier-opacity{syntax:'<number>';initial-value:1;inherits:false}
+:root{
+  --bg:#0d0703;
+  --panel:rgba(24,13,8,.78);
+  --cyan:#00f0ff;
+  --magenta:#ff2fd6;
+  --gold1:#fff3c4; --gold2:#ffd75e; --gold3:#e0a92e;
+  --txt:#f5ecdf;
+  --active-tier: S;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:'Rubik',sans-serif;min-height:100vh;overflow-x:hidden}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            overflow-x: hidden;
-            min-height: 100vh;
-        }
+/* ---------- НАВИГАЦИЯ ПО ТИРАМ ---------- */
+.tier-nav{
+  position:fixed;top:50%;left:20px;transform:translateY(-50%);z-index:100;
+  display:flex;flex-direction:column;gap:12px;
+  background:rgba(13,7,3,.6);backdrop-filter:blur(12px);
+  padding:16px 12px;border-radius:20px;
+  border:1px solid rgba(255,140,46,.3);
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.tier-nav-btn{
+  width:48px;height:48px;border-radius:12px;border:none;cursor:pointer;
+  font-family:'Unbounded',sans-serif;font-weight:900;font-size:18px;
+  transition:all .4s cubic-bezier(.34,1.56,.64,1);
+  position:relative;overflow:hidden;
+  background:linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.6);
+}
+.tier-nav-btn:hover{
+  transform:scale(1.15);
+  border-color:rgba(255,255,255,.5);
+  color:#fff;
+  box-shadow:0 0 20px rgba(255,255,255,.3);
+}
+.tier-nav-btn.active{
+  transform:scale(1.2);
+  border-color:var(--tier-color);
+  color:var(--tier-color);
+  box-shadow:0 0 30px var(--tier-color-glow);
+  background:linear-gradient(135deg,var(--tier-color),var(--tier-color-dark));
+}
+.tier-nav-btn.S{--tier-color:#ffd75e;--tier-color-dark:#b89b00;--tier-color-glow:rgba(255,215,94,.6)}
+.tier-nav-btn.A{--tier-color:#ff2fd6;--tier-color-dark:#b80094;--tier-color-glow:rgba(255,47,214,.6)}
+.tier-nav-btn.B{--tier-color:#00f0ff;--tier-color-dark:#00a8b8;--tier-color-glow:rgba(0,240,255,.6)}
+.tier-nav-btn.C{--tier-color:#45ff9c;--tier-color-dark:#00b86e;--tier-color-glow:rgba(69,255,156,.6)}
+.tier-nav-btn.D{--tier-color:#ff5470;--tier-color-dark:#b80034;--tier-color-glow:rgba(255,84,112,.6)}
+.tier-nav-btn::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at center,transparent 0%,transparent 60%,rgba(255,255,255,.1) 100%);
+  opacity:0;transition:.3s;
+}
+.tier-nav-btn:hover::before{opacity:1}
+@media(max-width:760px){.tier-nav{display:none}}
 
-        /* Canvas for Dragon Effects */
-        #dragon-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9999;
-        }
+/* ---------- 3D ПЕРЕХОД МЕЖДУ ТИРАМИ ---------- */
+.tier-section{
+  opacity:1;transform:translateZ(0);
+  transition:all .6s cubic-bezier(.34,1.56,.64,1);
+}
+.tier-section.hidden{
+  opacity:0;pointer-events:none;position:absolute;inset:0;
+  transform:translateZ(-500px) rotateX(20deg);
+}
+.tier-section.active{
+  opacity:1;transform:translateZ(0) rotateX(0);
+}
 
-        /* Layout */
-        .container {
-            display: flex;
-            min-height: 100vh;
-        }
+/* ---------- ОСЕННИЙ ФОН ---------- */
+.bg-image{
+  position:fixed;inset:0;z-index:-6;
+  background:url('https://image.qwenlm.ai/public_source/c9342a2f-b302-4f5e-8a67-bca5e6c7ac16/146ba97b2-48ad-471e-968f-c83005e03819.png') center 30%/cover no-repeat;
+  animation:bgBreath 24s ease-in-out infinite alternate;
+  transition:transform .3s ease-out;
+}
+@keyframes bgBreath{0%{transform:scale(1.06)}100%{transform:scale(1.15) translate(-1.5%,1%)}}
+.bg-overlay{
+  position:fixed;inset:0;z-index:-5;
+  background:
+    linear-gradient(180deg, rgba(13,7,3,.82) 0%, rgba(13,7,3,.55) 35%, rgba(13,7,3,.78) 75%, rgba(13,7,3,.95) 100%),
+    radial-gradient(ellipse at 12% 8%, rgba(255,140,46,.20), transparent 55%),
+    radial-gradient(ellipse at 88% 92%, rgba(217,65,43,.18), transparent 55%);
+}
+#bg3d{position:fixed;inset:0;z-index:-4;pointer-events:none}
+#leaves{position:fixed;inset:0;z-index:-3;pointer-events:none;overflow:hidden}
+.leaf{position:absolute;top:-10vh;animation:leafFall var(--d) linear infinite}
+.leaf span{display:block;animation:leafSway var(--s) ease-in-out infinite alternate;filter:drop-shadow(0 0 5px rgba(255,140,40,.4))}
+@keyframes leafFall{to{transform:translateY(128vh) rotate(340deg)}}
+@keyframes leafSway{from{transform:translateX(-32px) rotate(-45deg)}to{transform:translateX(32px) rotate(45deg)}}
+.orb{position:fixed;border-radius:50%;filter:blur(75px);z-index:-2;opacity:.45;pointer-events:none}
+.orb1{width:340px;height:340px;background:#ff8c2e;top:-90px;left:-90px;animation:orbF1 14s ease-in-out infinite alternate}
+.orb2{width:300px;height:300px;background:#ffd75e;bottom:-80px;right:-70px;animation:orbF2 17s ease-in-out infinite alternate}
+.orb3{width:220px;height:220px;background:#d9412b;top:45%;left:-110px;animation:orbF1 20s ease-in-out infinite alternate-reverse}
+@keyframes orbF1{from{transform:translate(0,0) scale(1)}to{transform:translate(70px,50px) scale(1.2)}}
+@keyframes orbF2{from{transform:translate(0,0) scale(1.1)}to{transform:translate(-80px,-60px) scale(.9)}}
 
-        /* Sidebar Navigation */
-        .sidebar {
-            width: 100px;
-            background: rgba(20, 20, 30, 0.95);
-            backdrop-filter: blur(10px);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 20px;
-            position: fixed;
-            height: 100vh;
-            z-index: 1000;
-            border-right: 1px solid rgba(255,255,255,0.1);
-        }
+.wrap{max-width:1240px;margin:0 auto;padding:34px 20px 90px;position:relative;z-index:1}
 
-        .nav-btn {
-            width: 60px;
-            height: 60px;
-            margin: 15px 0;
-            border-radius: 15px;
-            border: 2px solid transparent;
-            background: rgba(255,255,255,0.05);
-            color: var(--text-sec);
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-        }
+/* ---------- ШАПКА ---------- */
+header{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:26px}
+.title-box h1{
+  font-family:'Unbounded',sans-serif;font-weight:900;font-size:clamp(28px,5vw,54px);letter-spacing:2px;
+  background:linear-gradient(90deg,#ffd75e,#ff7f2a,#d9412b,#ffd75e,#fff3c4,#ffd75e);
+  background-size:300% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:gradMove 6s linear infinite, neonFlicker 4s ease-in-out infinite;
+  filter:drop-shadow(0 0 14px rgba(255,140,46,.55)) drop-shadow(0 0 30px rgba(217,65,43,.3));
+}
+@keyframes gradMove{from{background-position:0% 0}to{background-position:300% 0}}
+@keyframes neonFlicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.6}94%{opacity:1}96%{opacity:.75}97%{opacity:1}}
+.title-box p{margin-top:8px;color:#d8c2a5;font-size:14px;letter-spacing:3px;text-transform:uppercase}
+.title-box p b{color:var(--gold2)}
+.cube-scene{width:96px;height:96px;perspective:700px;flex:0 0 auto}
+.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;animation:cubeSpin 12s linear infinite}
+.cube .face{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'Unbounded',sans-serif;font-weight:900;font-size:44px;color:var(--gold1);
+  background:linear-gradient(135deg,rgba(255,215,94,.14),rgba(138,106,28,.10));
+  border:2px solid var(--gold2);border-radius:10px;
+  box-shadow:0 0 22px rgba(255,215,94,.5), inset 0 0 18px rgba(255,215,94,.25);
+  text-shadow:0 0 12px var(--gold2);
+}
+.face.f1{transform:rotateY(0deg) translateZ(48px)}.face.f2{transform:rotateY(90deg) translateZ(48px)}
+.face.f3{transform:rotateY(180deg) translateZ(48px)}.face.f4{transform:rotateY(270deg) translateZ(48px)}
+.face.f5{transform:rotateX(90deg) translateZ(48px)}.face.f6{transform:rotateX(-90deg) translateZ(48px)}
+@keyframes cubeSpin{from{transform:rotateX(-18deg) rotateY(0)}to{transform:rotateX(-18deg) rotateY(360deg)}}
 
-        .nav-btn:hover {
-            transform: scale(1.1) rotate(5deg);
-            color: white;
-            box-shadow: 0 0 20px currentColor;
-        }
+/* ---------- ТУЛБАР ---------- */
+.toolbar{
+  display:flex;gap:12px;flex-wrap:wrap;align-items:center;
+  background:var(--panel);backdrop-filter:blur(14px);
+  border:1px solid rgba(255,140,46,.35);border-radius:16px;padding:14px 16px;margin-bottom:26px;
+  box-shadow:0 8px 32px rgba(0,0,0,.45), inset 0 0 24px rgba(255,140,46,.06);
+}
+.toolbar input[type=text]{
+  flex:1;min-width:200px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);
+  border-radius:10px;padding:10px 14px;color:var(--txt);font-family:'Rubik';font-size:14px;outline:none;transition:.25s;
+}
+.toolbar input[type=text]:focus{border-color:#ff8c2e;box-shadow:0 0 12px rgba(255,140,46,.4)}
+.btn{
+  border:none;cursor:pointer;border-radius:10px;padding:10px 16px;position:relative;overflow:hidden;
+  font-family:'Rubik';font-weight:700;font-size:13px;letter-spacing:.5px;color:#241000;transition:.25s;
+  background:linear-gradient(90deg,#ffb347,#ffd75e);box-shadow:0 0 14px rgba(255,179,71,.4);
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 0 24px rgba(255,179,71,.75)}
+.btn:active{transform:scale(.96)}
+.btn.pink{background:linear-gradient(90deg,#ff5e3a,#ff8c2e);color:#fff;box-shadow:0 0 14px rgba(255,94,58,.45)}
+.btn.pink:hover{box-shadow:0 0 24px rgba(255,94,58,.8)}
+.btn.gold{background:linear-gradient(90deg,var(--gold2),#ffea9e);color:#3a2c00;box-shadow:0 0 14px rgba(255,215,94,.45)}
+.btn.gold:hover{box-shadow:0 0 26px rgba(255,215,94,.8)}
+.btn.ghost{background:transparent;color:#e8d5ba;border:1px solid rgba(255,255,255,.28);box-shadow:none}
+.btn.ghost:hover{border-color:#ff8c2e;color:#fff;box-shadow:0 0 16px rgba(255,140,46,.4)}
+.btn.danger{background:linear-gradient(90deg,#d9412b,#ff5470);color:#fff;box-shadow:0 0 14px rgba(217,65,43,.4)}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.stat-pill{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;border:1px solid;letter-spacing:.5px}
 
-        .nav-btn.s-tier { border-color: var(--s-color); color: var(--s-color); }
-        .nav-btn.a-tier { border-color: var(--a-color); color: var(--a-color); }
-        .nav-btn.b-tier { border-color: var(--b-color); color: var(--b-color); }
-        .nav-btn.c-tier { border-color: var(--c-color); color: var(--c-color); }
-        .nav-btn.d-tier { border-color: var(--d-color); color: var(--d-color); }
-        .nav-btn.all { border-color: #fff; color: #fff; font-size: 20px; }
+/* ---------- ФОРМА ---------- */
+.add-panel{
+  background:var(--panel);backdrop-filter:blur(16px);
+  border:1px solid rgba(255,94,58,.35);border-radius:20px;padding:24px;margin-bottom:34px;
+  position:relative;overflow:hidden;box-shadow:0 12px 44px rgba(0,0,0,.5);
+}
+.add-panel::before{content:'';position:absolute;top:0;left:-60%;width:50%;height:2px;
+  background:linear-gradient(90deg,transparent,#ffb347,transparent);animation:scanline 4s linear infinite}
+@keyframes scanline{to{left:110%}}
+.add-panel h2{font-family:'Unbounded';font-size:18px;font-weight:700;margin-bottom:4px;color:#fff;text-shadow:0 0 10px rgba(255,140,46,.6)}
+.add-panel .hint{color:#c9b193;font-size:13px;margin-bottom:18px;line-height:1.6}
+.add-panel .hint b{color:var(--gold2)}
+.form-grid{display:grid;grid-template-columns:1.2fr .8fr 1fr auto;gap:16px;align-items:end}
+@media(max-width:960px){.form-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}}
+.field label{display:block;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#b09777;margin-bottom:8px;font-weight:700}
+.field input[type=text],.field select{
+  width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;
+  padding:11px 13px;color:var(--txt);font-family:'Rubik';font-size:14px;outline:none;transition:.25s;
+}
+.field input:focus,.field select:focus{border-color:#ff8c2e;box-shadow:0 0 14px rgba(255,140,46,.4)}
+.field select option{background:#1c0f06;color:#fff}
+.img-tabs{display:flex;gap:6px;margin-bottom:8px}
+.img-tab{flex:1;text-align:center;padding:7px 4px;border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,.18);color:#c9b193;font-size:12px;font-weight:700;transition:.25s}
+.img-tab.active{background:linear-gradient(90deg,rgba(255,179,71,.25),rgba(217,65,43,.25));border-color:#ffb347;color:#fff;box-shadow:0 0 10px rgba(255,179,71,.35)}
+.preview-row{display:flex;gap:12px;align-items:center}
+.preview{width:74px;height:98px;border-radius:10px;flex:0 0 auto;border:1px dashed rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:26px;color:#7a6248;overflow:hidden;background:rgba(255,255,255,.04);transition:.3s}
+.preview img{width:100%;height:100%;object-fit:cover}
+.preview.ok{border-style:solid;border-color:#45ff9c;box-shadow:0 0 14px rgba(69,255,156,.4)}
+.file-label{display:block;text-align:center;padding:10px;border-radius:10px;cursor:pointer;border:1px dashed rgba(255,179,71,.55);color:#ffb347;font-size:13px;font-weight:700;transition:.25s}
+.file-label:hover{background:rgba(255,179,71,.1);box-shadow:0 0 14px rgba(255,179,71,.35)}
+.add-actions{display:flex;flex-direction:column;gap:10px}
+@media(max-width:960px){.add-actions{flex-direction:row}}
 
-        /* Main Content */
-        .main-content {
-            margin-left: 100px;
-            padding: 40px;
-            width: 100%;
-        }
+/* ---------- ТИРЫ ---------- */
+.t-S{--c:#ffd75e;--c2:#fff6cf;--cd:#7a5a10}
+.t-A{--c:#ff2fd6;--c2:#ff9dee;--cd:#7c0f66}
+.t-B{--c:#00f0ff;--c2:#a8fbff;--cd:#086870}
+.t-C{--c:#45ff9c;--c2:#c2ffdd;--cd:#0e7a44}
+.t-D{--c:#ff5470;--c2:#ffb3c0;--cd:#7e1626}
 
-        header {
-            text-align: center;
-            margin-bottom: 50px;
-            animation: fadeInDown 1s ease;
-        }
+.tier-row{display:grid;grid-template-columns:185px 1fr;gap:16px;margin-bottom:18px;transition:transform .35s;animation:rowIn .7s cubic-bezier(.2,.9,.3,1.2) backwards}
+.tier-row:hover{transform:scale(1.008) translateX(4px)}
+.tier-row:nth-child(1){animation-delay:.05s}.tier-row:nth-child(2){animation-delay:.15s}
+.tier-row:nth-child(3){animation-delay:.25s}.tier-row:nth-child(4){animation-delay:.35s}
+.tier-row:nth-child(5){animation-delay:.45s}
+@keyframes rowIn{from{opacity:0;transform:translateX(-46px)}to{opacity:1;transform:none}}
+@media(max-width:760px){.tier-row{grid-template-columns:1fr}}
 
-        h1 {
-            font-size: 3rem;
-            background: linear-gradient(45deg, var(--s-color), var(--a-color), var(--b-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }
+.tier-label{
+  border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:16px 10px 14px;text-align:center;position:relative;overflow:hidden;backdrop-filter:blur(10px);
+  background:
+    linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px) 0 0/100% 22px,
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px) 0 0/22px 100%,
+    radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--c) 15%, transparent), transparent 72%),
+    var(--panel);
+  border:1px solid rgba(255,255,255,.12);
+  border-color:color-mix(in srgb, var(--c) 45%, transparent);
+  box-shadow:0 0 18px color-mix(in srgb, var(--c) 22%, transparent);
+}
+.tier-label::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;
+  background:conic-gradient(from var(--spin),transparent 0 20%,var(--c) 28%,transparent 36%,transparent 50% 70%,var(--c2) 78%,transparent 86%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;
+  animation:spinFrame 5s linear infinite;
+}
+@keyframes spinFrame{to{--spin:360deg}}
+.hud{position:absolute;width:14px;height:14px;border:2px solid var(--c);opacity:.85;filter:drop-shadow(0 0 4px var(--c))}
+.hud.c1{top:7px;left:7px;border-right:none;border-bottom:none}
+.hud.c2{top:7px;right:7px;border-left:none;border-bottom:none}
+.hud.c3{bottom:7px;left:7px;border-right:none;border-top:none}
+.hud.c4{bottom:7px;right:7px;border-left:none;border-top:none}
+.scan{position:absolute;left:6%;right:6%;height:2px;top:-8%;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:.5;animation:scanY 3.8s linear infinite;pointer-events:none}
+@keyframes scanY{to{top:108%}}
 
-        /* Tier Sections */
-        .tier-section {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 40px;
-            border: 1px solid rgba(255,255,255,0.05);
-            transition: all 0.5s ease;
-            opacity: 1;
-            transform: translateY(0);
-            position: relative;
-            overflow: hidden;
-        }
+/* --- 3D БУКВЫ ТИРОВ --- */
+.letter-stage{position:relative;height:92px;width:100%;display:flex;align-items:center;justify-content:center;perspective:460px;margin-bottom:2px;animation:lFloat 4.5s ease-in-out infinite}
+@keyframes lFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.holo-ring{position:absolute;left:50%;top:50%;border-radius:50%;pointer-events:none}
+.holo-ring.r1{width:84px;height:84px;margin:-42px 0 0 -42px;
+  background:conic-gradient(from 0deg,transparent 0 55%,var(--c) 62%,var(--c2) 68%,transparent 75%);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));
+  animation:ringSpin 3.5s linear infinite;filter:drop-shadow(0 0 6px var(--c))}
+.holo-ring.r2{width:98px;height:98px;margin:-49px 0 0 -49px;border:1px dashed var(--c);opacity:.4;animation:ringSpinR 10s linear infinite}
+@keyframes ringSpin{to{transform:rotate(360deg)}}
+@keyframes ringSpinR{to{transform:rotate(-360deg)}}
+.l3d{display:grid;place-items:center;transform-style:preserve-3d;animation:l3dWobble 5.5s ease-in-out infinite}
+@keyframes l3dWobble{0%,100%{transform:rotateY(-28deg) rotateX(8deg)}50%{transform:rotateY(28deg) rotateX(-8deg)}}
+.l-layer{grid-area:1/1;font-family:'Unbounded',sans-serif;font-weight:900;font-size:56px;line-height:1;user-select:none}
+.l-back{color:var(--cd)}
+.l-front{
+  background:linear-gradient(115deg,var(--c2),var(--c) 35%,var(--c2) 55%,var(--c) 80%,var(--c2));
+  background-size:300% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:lGrad 3s linear infinite, lGlow 2.6s ease-in-out infinite, lFlicker 7s steps(1) infinite;
+}
+@keyframes lGrad{from{background-position:0% 0}to{background-position:300% 0}}
+@keyframes lGlow{0%,100%{filter:drop-shadow(0 0 6px var(--c)) hue-rotate(0deg)}50%{filter:drop-shadow(0 0 20px var(--c)) hue-rotate(32deg)}}
+@keyframes lFlicker{0%,91%,94%,97%,100%{opacity:1}92%{opacity:.4}95%{opacity:.6}}
 
-        .tier-section.hidden {
-            display: none;
-        }
+.t-S .tier-label{animation:goldPulse 2.6s ease-in-out infinite}
+@keyframes goldPulse{0%,100%{box-shadow:0 0 18px rgba(255,215,94,.3), inset 0 0 24px rgba(255,215,94,.1)}50%{box-shadow:0 0 44px rgba(255,215,94,.65), inset 0 0 40px rgba(255,215,94,.22)}}
+.t-S .crown{position:absolute;top:8px;right:12px;font-size:18px;animation:crownBob 2s ease-in-out infinite;filter:drop-shadow(0 0 8px var(--gold2))}
+@keyframes crownBob{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-4px) rotate(8deg)}}
+.spark{position:absolute;bottom:-4px;width:3px;height:3px;border-radius:50%;background:var(--gold2);box-shadow:0 0 7px var(--gold2);opacity:0;animation:sparkUp 3s linear infinite;pointer-events:none}
+@keyframes sparkUp{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
 
-        .tier-section.fade-out {
-            opacity: 0;
-            transform: translateY(20px) scale(0.95);
-        }
+.tname{font-weight:700;font-size:13px;letter-spacing:1px;margin-top:4px;text-transform:uppercase;color:var(--c);text-shadow:0 0 8px color-mix(in srgb, var(--c) 60%, transparent)}
+.tdesc{font-size:11px;color:#a08a6d;margin-top:3px}
 
-        .tier-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            cursor: pointer;
-            padding: 10px;
-            border-radius: 10px;
-            transition: background 0.3s;
-        }
+.tier-zone{
+  border-radius:16px;min-height:172px;padding:12px;display:flex;flex-wrap:wrap;gap:12px;align-content:flex-start;
+  background:rgba(255,255,255,.035);backdrop-filter:blur(8px);position:relative;transition:.25s;
+  border:1px dashed rgba(255,255,255,.25);
+  border-color:color-mix(in srgb, var(--c) 45%, transparent);
+}
+.t-S .tier-zone{background:linear-gradient(90deg,rgba(255,215,94,.08),rgba(255,215,94,.02));overflow:hidden}
+.t-S .tier-zone::after{content:'';position:absolute;top:0;left:-40%;width:30%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,235,170,.15),transparent);animation:zoneShine 4.5s linear infinite;pointer-events:none}
+@keyframes zoneShine{to{left:120%}}
+.tier-zone.over{background:rgba(255,255,255,.09);box-shadow:inset 0 0 26px color-mix(in srgb, var(--c) 30%, transparent);border-style:solid}
+.zone-empty{width:100%;height:100%;min-height:140px;display:flex;align-items:center;justify-content:center;color:#7a6248;font-size:13px;letter-spacing:1px}
 
-        .tier-header:hover {
-            background: rgba(255,255,255,0.05);
-        }
+/* ---------- КАРТОЧКИ ---------- */
+.card{
+  width:116px;border-radius:12px;overflow:hidden;cursor:grab;position:relative;
+  background:rgba(24,13,8,.92);border:1px solid rgba(255,255,255,.16);
+  transition:box-shadow .25s, border-color .25s;animation:cardPop .45s cubic-bezier(.2,1.4,.4,1) backwards;will-change:transform;
+}
+@keyframes cardPop{from{opacity:0;transform:scale(.5) rotate(-6deg)}to{opacity:1;transform:scale(1)}}
+.card.dragging{opacity:.4;cursor:grabbing}
+.card .cimg{width:100%;height:150px;object-fit:cover;display:block;pointer-events:none}
+.card .ctitle{padding:7px 6px;font-size:11.5px;font-weight:700;text-align:center;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .cacts{position:absolute;top:5px;right:5px;display:flex;gap:4px;opacity:0;transition:.25s}
+.card:hover .cacts{opacity:1}
+.cbtn{width:24px;height:24px;border-radius:7px;border:none;cursor:pointer;background:rgba(0,0,0,.72);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:.2s}
+.cbtn:hover{transform:scale(1.15)}
+.cbtn.del:hover{background:#ff5470}
+.cbtn.edt:hover{background:#ffb347;color:#000}
+.card.tS{border-color:var(--gold2);box-shadow:0 0 14px rgba(255,215,94,.45)}
+.card.tS:hover{box-shadow:0 0 26px rgba(255,215,94,.8)}
+.card.tS .ctitle{color:var(--gold2)}
+.card.tA{border-color:rgba(255,47,214,.6)}.card.tA:hover{box-shadow:0 0 18px rgba(255,47,214,.55)}
+.card.tB{border-color:rgba(0,240,255,.6)}.card.tB:hover{box-shadow:0 0 18px rgba(0,240,255,.55)}
+.card.tC{border-color:rgba(69,255,156,.6)}.card.tC:hover{box-shadow:0 0 18px rgba(69,255,156,.55)}
+.card.tD{border-color:rgba(255,84,112,.6)}.card.tD:hover{box-shadow:0 0 18px rgba(255,84,112,.55)}
+.card .edit-input{width:100%;background:#000;border:1px solid #ffb347;color:#fff;font-size:11px;padding:4px;border-radius:4px;font-family:'Rubik'}
+.hidden-card{display:none!important}
 
-        .tier-badge {
-            font-size: 3rem;
-            font-weight: 900;
-            margin-right: 20px;
-            text-shadow: 0 0 15px currentColor;
-        }
-
-        .s-tier .tier-badge { color: var(--s-color); }
-        .a-tier .tier-badge { color: var(--a-color); }
-        .b-tier .tier-badge { color: var(--b-color); }
-        .c-tier .tier-badge { color: var(--c-color); }
-        .d-tier .tier-badge { color: var(--d-color); }
-
-        .tier-title h2 { font-size: 2rem; }
-        .tier-title p { color: var(--text-sec); }
-
-        /* Items Grid */
-        .items-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .item-card {
-            background: rgba(0,0,0,0.3);
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .item-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .item-icon {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        /* Animations */
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .sidebar { width: 60px; }
-            .main-content { margin-left: 60px; padding: 20px; }
-            .nav-btn { width: 40px; height: 40px; font-size: 18px; }
-        }
-    </style>
+/* ---------- МОДАЛКИ / ТОСТЫ ---------- */
+.modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(8,4,2,.82);backdrop-filter:blur(8px)}
+.modal.open{display:flex}
+.modal-box{
+  background:linear-gradient(160deg,#241206,#120802);border:1px solid rgba(255,179,71,.45);border-radius:20px;
+  padding:30px;max-width:420px;width:92%;text-align:center;position:relative;
+  box-shadow:0 0 60px rgba(255,140,46,.28);animation:modalIn .4s cubic-bezier(.2,1.3,.4,1);perspective:900px;
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.7) rotateX(40deg)}to{opacity:1;transform:none}}
+.modal-box h3{font-family:'Unbounded';font-size:18px;margin-bottom:14px;color:#fff}
+.modal-box p{color:#c9b193;font-size:14px;margin-bottom:20px;line-height:1.6}
+.modal-btns{display:flex;gap:10px;justify-content:center}
+.flip-card{width:200px;height:260px;margin:0 auto 18px;border-radius:16px;overflow:hidden;position:relative;border:2px solid var(--gold2);box-shadow:0 0 34px rgba(255,215,94,.5);animation:flipIn 1s cubic-bezier(.2,1.2,.3,1)}
+@keyframes flipIn{from{transform:rotateY(180deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.flip-card img{width:100%;height:100%;object-fit:cover}
+.flip-card .fc-tier{position:absolute;top:8px;left:8px;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Unbounded';font-weight:900;font-size:20px;background:rgba(0,0,0,.75);color:var(--gold2);border:1px solid var(--gold2)}
+.flip-title{font-family:'Unbounded';font-size:16px;color:var(--gold2);margin-bottom:6px;text-shadow:0 0 12px rgba(255,215,94,.6)}
+#toasts{position:fixed;bottom:22px;right:22px;z-index:99;display:flex;flex-direction:column;gap:10px}
+.toast{background:rgba(20,10,4,.94);border-radius:12px;padding:12px 18px;font-size:13.5px;font-weight:500;border:1px solid #ffb347;box-shadow:0 0 18px rgba(255,179,71,.4);animation:toastIn .4s cubic-bezier(.2,1.3,.4,1);max-width:320px}
+.toast.gold{border-color:var(--gold2);box-shadow:0 0 18px rgba(255,215,94,.55);color:var(--gold1)}
+.toast.err{border-color:#ff5470;box-shadow:0 0 18px rgba(255,84,112,.4)}
+@keyframes toastIn{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+.toast.out{opacity:0;transform:translateX(60px);transition:.4s}
+footer{margin-top:40px;text-align:center;color:#8a7358;font-size:12px;letter-spacing:2px}
+footer b{color:#ff8c2e}
+</style>
 </head>
 <body>
 
-    <!-- Canvas for Dragon Animation -->
-    <canvas id="dragon-canvas"></canvas>
+<div class="bg-image" id="bgImage"></div>
+<div class="bg-overlay"></div>
+<canvas id="bg3d"></canvas>
+<div id="leaves"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
 
-    <div class="container">
-        <!-- Sidebar Navigation -->
-        <nav class="sidebar">
-            <button class="nav-btn all" onclick="showAllTiers()" title="Показать все">🌐</button>
-            <button class="nav-btn s-tier" onmouseenter="spawnDragon('S')" onmouseleave="stopDragon()" onclick="filterTier('S')" title="S Tier - Королевский Дракон">S</button>
-            <button class="nav-btn a-tier" onmouseenter="spawnDragon('A')" onmouseleave="stopDragon()" onclick="filterTier('A')" title="A Tier - Мистический Дракон">A</button>
-            <button class="nav-btn b-tier" onmouseenter="spawnDragon('B')" onmouseleave="stopDragon()" onclick="filterTier('B')" title="B Tier - Ледяной Дракон">B</button>
-            <button class="nav-btn c-tier" onmouseenter="spawnDragon('C')" onmouseleave="stopDragon()" onclick="filterTier('C')" title="C Tier - Природный Дракон">C</button>
-            <button class="nav-btn d-tier" onmouseenter="spawnDragon('D')" onmouseleave="stopDragon()" onclick="filterTier('D')" title="D Tier - Огненный Дракон">D</button>
-        </nav>
+<div class="wrap">
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <header>
-                <h1>DRAGON TIERS</h1>
-                <p>Official Ranking System with Dynamic Dragon Effects</p>
-            </header>
-
-            <!-- S Tier -->
-            <section id="tier-S" class="tier-section s-tier">
-                <div class="tier-header" onmouseenter="spawnDragon('S')" onmouseleave="stopDragon()">
-                    <div class="tier-badge">S</div>
-                    <div class="tier-title">
-                        <h2>Королевский Уровень</h2>
-                        <p>Лучшие из лучших. Золотое пламя.</p>
-                    </div>
-                </div>
-                <div class="items-grid">
-                    <div class="item-card"><span class="item-icon">👑</span><h3>Legend</h3></div>
-                    <div class="item-card"><span class="item-icon">⚔️</span><h3>God Slayer</h3></div>
-                    <div class="item-card"><span class="item-icon">💎</span><h3>Rare Artifact</h3></div>
-                </div>
-            </section>
-
-            <!-- A Tier -->
-            <section id="tier-A" class="tier-section a-tier">
-                <div class="tier-header" onmouseenter="spawnDragon('A')" onmouseleave="stopDragon()">
-                    <div class="tier-badge">A</div>
-                    <div class="tier-title">
-                        <h2>Мистический Уровень</h2>
-                        <p>Магия и сила. Розовое сияние.</p>
-                    </div>
-                </div>
-                <div class="items-grid">
-                    <div class="item-card"><span class="item-icon">🔮</span><h3>Mage</h3></div>
-                    <div class="item-card"><span class="item-icon">🧙‍♂️</span><h3>Sorcerer</h3></div>
-                </div>
-            </section>
-
-            <!-- B Tier -->
-            <section id="tier-B" class="tier-section b-tier">
-                <div class="tier-header" onmouseenter="spawnDragon('B')" onmouseleave="stopDragon()">
-                    <div class="tier-badge">B</div>
-                    <div class="tier-title">
-                        <h2>Ледяной Уровень</h2>
-                        <p>Холод и расчет. Голубые искры.</p>
-                    </div>
-                </div>
-                <div class="items-grid">
-                    <div class="item-card"><span class="item-icon">❄️</span><h3>Knight</h3></div>
-                    <div class="item-card"><span class="item-icon">🛡️</span><h3>Guardian</h3></div>
-                </div>
-            </section>
-
-            <!-- C Tier -->
-            <section id="tier-C" class="tier-section c-tier">
-                <div class="tier-header" onmouseenter="spawnDragon('C')" onmouseleave="stopDragon()">
-                    <div class="tier-badge">C</div>
-                    <div class="tier-title">
-                        <h2>Природный Уровень</h2>
-                        <p>Жизнь и рост. Зелёные частицы.</p>
-                    </div>
-                </div>
-                <div class="items-grid">
-                    <div class="item-card"><span class="item-icon">🌿</span><h3>Druid</h3></div>
-                    <div class="item-card"><span class="item-icon">🏹</span><h3>Ranger</h3></div>
-                </div>
-            </section>
-
-            <!-- D Tier -->
-            <section id="tier-D" class="tier-section d-tier">
-                <div class="tier-header" onmouseenter="spawnDragon('D')" onmouseleave="stopDragon()">
-                    <div class="tier-badge">D</div>
-                    <div class="tier-title">
-                        <h2>Огненный Уровень</h2>
-                        <p>Ярость и хаос. Красное пламя.</p>
-                    </div>
-                </div>
-                <div class="items-grid">
-                    <div class="item-card"><span class="item-icon">🔥</span><h3>Berserker</h3></div>
-                    <div class="item-card"><span class="item-icon">💣</span><h3>Novice</h3></div>
-                </div>
-            </section>
-        </main>
+  <header>
+    <div class="title-box">
+      <h1>ANIME TIER LIST</h1>
+      <p>🍁 Осенний неоновый рейтинг · <b>S — легенды</b> 🍁</p>
     </div>
+    <div class="cube-scene" title="3D-эмблема">
+      <div class="cube">
+        <div class="face f1">S</div><div class="face f2">A</div>
+        <div class="face f3">B</div><div class="face f4">C</div>
+        <div class="face f5">D</div><div class="face f6">🍁</div>
+      </div>
+    </div>
+  </header>
 
-    <script>
-        // --- DRAGON ANIMATION SYSTEM ---
-        const canvas = document.getElementById('dragon-canvas');
-        const ctx = canvas.getContext('2d');
-        let animationId;
-        let particles = [];
-        let dragonActive = false;
-        let currentTier = null;
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="🔍 Поиск аниме в списке…">
+    <button class="btn gold" id="randomBtn">🎲 Что посмотреть?</button>
+    <button class="btn ghost" id="exportBtn">⬇ Экспорт</button>
+    <button class="btn ghost" id="importBtn">⬆ Импорт</button>
+    <input type="file" id="importFile" accept=".json" hidden>
+    <button class="btn danger" id="clearBtn">🗑 Очистить</button>
+    <div class="stats" id="stats"></div>
+  </div>
 
-        // Resize canvas
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+  <div class="add-panel">
+    <h2>＋ Добавить аниме</h2>
+    <div class="hint">
+      <b>Пример заполнения:</b> 📛 Название → <b>«Вайолет Эвергарден»</b> &nbsp;·&nbsp; 🏆 Тир → <b>S</b> &nbsp;·&nbsp;
+      🖼 Фото → вставь <b>ссылку</b> (https://… .jpg) или нажми <b>«Выбрать файл»</b>. Карточки перетаскиваются между тирами мышью — всё сохраняется автоматически.
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>📛 Название аниме</label>
+        <input type="text" id="animeTitle" placeholder="Пример: Вайолет Эвергарден" maxlength="60">
+      </div>
+      <div class="field">
+        <label>🏆 Тир (ранг)</label>
+        <select id="animeTier">
+          <option value="S">S — Легендарный 👑</option>
+          <option value="A">A — Великолепный</option>
+          <option value="B" selected>B — Отличный</option>
+          <option value="C">C — Средний</option>
+          <option value="D">D — Слабый</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>🖼 Фото аниме</label>
+        <div class="img-tabs">
+          <div class="img-tab active" data-src="url">🔗 Ссылка</div>
+          <div class="img-tab" data-src="file">📁 Файл</div>
+        </div>
+        <div id="urlBox"><input type="text" id="animeUrl" placeholder="Пример: https://site.com/poster.jpg"></div>
+        <div id="fileBox" style="display:none">
+          <label class="file-label" for="animeFile">Выбрать файл с устройства</label>
+          <input type="file" id="animeFile" accept="image/*" hidden>
+        </div>
+      </div>
+      <div class="add-actions">
+        <div class="preview-row"><div class="preview" id="preview">🖼</div></div>
+        <button class="btn pink" id="addBtn">✨ Добавить</button>
+        <button class="btn ghost" id="sampleBtn">🎁 Заполнить примером</button>
+      </div>
+    </div>
+  </div>
 
-        // Dragon Configurations
-        const dragonConfigs = {
-            'S': { color: '#ffd75e', glow: '#fff8db', name: 'КОРОЛЕВСКИЙ ДРАКОН', type: 'gold_fire' },
-            'A': { color: '#ff2fd6', glow: '#ffb8f0', name: 'МИСТИЧЕСКИЙ ДРАКОН', type: 'magic_sparkle' },
-            'B': { color: '#00f0ff', glow: '#dbfbff', name: 'ЛЕДЯНОЙ ДРАКОН', type: 'ice_shards' },
-            'C': { color: '#45ff9c', glow: '#e0ffe8', name: 'ПРИРОДНЫЙ ДРАКОН', type: 'nature_leaf' },
-            'D': { color: '#ff5470', glow: '#ffd4dc', name: 'ОГНЕННЫЙ ДРАКОН', type: 'red_fire' }
-        };
+  <!-- Навигация по тирам S A B C D -->
+  <nav class="tier-nav" id="tierNav"></nav>
 
-        class Particle {
-            constructor(x, y, config) {
-                this.x = x;
-                this.y = y;
-                this.config = config;
-                this.size = Math.random() * 3 + 1;
-                this.speedX = Math.random() * 6 - 3;
-                this.speedY = Math.random() * 6 - 3;
-                this.life = 100;
-                this.decay = Math.random() * 2 + 1;
-                
-                // Specific behaviors based on tier
-                if (config.type === 'gold_fire' || config.type === 'red_fire') {
-                    this.speedY -= 2; // Fire goes up
-                    this.size = Math.random() * 4 + 2;
-                } else if (config.type === 'ice_shards') {
-                    this.speedX *= 1.5; // Ice spreads fast
-                    this.decay = 1.5;
-                } else if (config.type === 'nature_leaf') {
-                    this.speedY += 1; // Leaves fall slightly
-                    this.rotation = Math.random() * Math.PI * 2;
-                    this.rotSpeed = Math.random() * 0.2 - 0.1;
-                }
-            }
+  <div id="tierList"></div>
 
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.life -= this.decay;
-                this.size *= 0.96;
+  <footer>Сделано с <b>♥</b> · ANIME TIER LIST · данные хранятся в твоём браузере</footer>
+</div>
 
-                if (this.config.type === 'nature_leaf') {
-                    this.rotation += this.rotSpeed;
-                    this.x += Math.sin(this.life * 0.1) * 2;
-                }
-            }
+<div class="modal" id="clearModal">
+  <div class="modal-box">
+    <h3>🗑 Удалить всё?</h3>
+    <p>Весь твой тир-лист будет стёр безвозвратно. Ты уверен(а)?</p>
+    <div class="modal-btns">
+      <button class="btn danger" id="clearYes">Да, удалить</button>
+      <button class="btn ghost" id="clearNo">Отмена</button>
+    </div>
+  </div>
+</div>
 
-            draw() {
-                ctx.beginPath();
-                if (this.config.type === 'nature_leaf') {
-                    ctx.save();
-                    ctx.translate(this.x, this.y);
-                    ctx.rotate(this.rotation);
-                    ctx.fillStyle = this.config.color;
-                    ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
-                    ctx.restore();
-                } else {
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    ctx.fillStyle = this.config.color;
-                    ctx.fill();
-                }
-            }
-        }
+<div class="modal" id="randomModal">
+  <div class="modal-box">
+    <h3>🎲 Сегодня смотри…</h3>
+    <div class="flip-card" id="flipCard"><img alt=""><div class="fc-tier"></div></div>
+    <div class="flip-title" id="flipTitle"></div>
+    <div class="modal-btns">
+      <button class="btn gold" id="randomAgain">🎲 Ещё раз</button>
+      <button class="btn ghost" id="randomClose">Закрыть</button>
+    </div>
+  </div>
+</div>
 
-        function drawDragonHead(x, y, config) {
-            ctx.save();
-            ctx.translate(x, y);
-            
-            // Glow effect
-            ctx.shadowBlur = 30;
-            ctx.shadowColor = config.glow;
-            
-            // Draw stylized dragon head silhouette
-            ctx.fillStyle = config.color;
-            ctx.beginPath();
-            // Head shape
-            ctx.moveTo(0, -20);
-            ctx.bezierCurveTo(30, -30, 50, -10, 40, 20);
-            ctx.bezierCurveTo(20, 40, -20, 40, -40, 20);
-            ctx.bezierCurveTo(-50, -10, -30, -30, 0, -20);
-            ctx.fill();
+<div id="toasts"></div>
 
-            // Eyes
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(15, -5, 4, 0, Math.PI * 2);
-            ctx.arc(-15, -5, 4, 0, Math.PI * 2);
-            ctx.fill();
+<script>
+const LS_KEY = 'animeTierList_v1';
+const TIERS = [
+  {key:'S', name:'Легендарный', desc:'шедевры на все времена'},
+  {key:'A', name:'Великолепный', desc:'почти идеально'},
+  {key:'B', name:'Отличный', desc:'смотреть смело'},
+  {key:'C', name:'Средний', desc:'на один раз'},
+  {key:'D', name:'Слабый', desc:'ниже среднего'}
+];
+const FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="116" height="150"><rect width="100%" height="100%" fill="#241206"/><text x="50%" y="50%" font-size="40" text-anchor="middle" fill="#7a6248">🍁</text></svg>');
+const SAMPLES = [
+  {title:'Вайолет Эвергарден', tier:'S', img:'https://image.qwenlm.ai/public_source/c9342a2f-b302-4f5e-8a67-bca5e6c7ac16/15886ecc7-8ff8-436a-80bf-e92ccc7bf097.png'},
+  {title:'Клинок, рассекающий демонов', tier:'A', img:'https://image.qwenlm.ai/public_source/c9342a2f-b302-4f5e-8a67-bca5e6c7ac16/151922fad-0cba-4363-97fa-5979bae017d2.png'},
+  {title:'Киберпанк: Бегущие по краю', tier:'B', img:'https://image.qwenlm.ai/public_source/c9342a2f-b302-4f5e-8a67-bca5e6c7ac16/1ab419ad5-013c-4af6-8db4-025bb58ff54d.png'}
+];
+let items = [];
+try{ items = JSON.parse(localStorage.getItem(LS_KEY)) || []; }catch(e){ items = []; }
+let pendingImg = null, draggedId = null, searchQuery = '';
+const $ = s => document.querySelector(s);
+const uid = () => 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const save = () => localStorage.setItem(LS_KEY, JSON.stringify(items));
 
-            // Horns
-            ctx.strokeStyle = config.color;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(-20, -15);
-            ctx.lineTo(-40, -40);
-            ctx.moveTo(20, -15);
-            ctx.lineTo(40, -40);
-            ctx.stroke();
+function toast(msg, type=''){
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  $('#toasts').appendChild(t);
+  setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(), 450); }, 3200);
+}
 
-            ctx.restore();
-        }
+/* ---------- 3D БУКВА ---------- */
+function build3DLetter(letter, idx){
+  const stage = document.createElement('div');
+  stage.className = 'letter-stage';
+  stage.style.animationDelay = (idx*.5)+'s';
+  stage.innerHTML = '<span class="holo-ring r1"></span><span class="holo-ring r2"></span>';
+  const wrap = document.createElement('div');
+  wrap.className = 'l3d';
+  wrap.style.animationDelay = (idx*.4)+'s';
+  for(let i=8;i>=1;i--){
+    const s = document.createElement('span');
+    s.className = 'l-layer l-back';
+    s.textContent = letter;
+    s.style.transform = 'translateZ('+(-i*2.4)+'px)';
+    s.style.opacity = (1 - i*0.07);
+    wrap.appendChild(s);
+  }
+  const front = document.createElement('span');
+  front.className = 'l-layer l-front';
+  front.textContent = letter;
+  front.style.transform = 'translateZ(2px)';
+  wrap.appendChild(front);
+  stage.appendChild(wrap);
+  return stage;
+}
 
-        function animate() {
-            if (!dragonActive) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                return;
-            }
+/* ---------- РЕНДЕР ---------- */
+function makeCard(item){
+  const card = document.createElement('div');
+  card.className = 'card t' + item.tier;
+  card.draggable = true;
+  card.dataset.id = item.id;
+  const img = document.createElement('img');
+  img.className = 'cimg'; img.src = item.img; img.alt = item.title;
+  img.onerror = () => { img.onerror = null; img.src = FALLBACK; };
+  card.appendChild(img);
+  const acts = document.createElement('div');
+  acts.className = 'cacts';
+  const edt = document.createElement('button');
+  edt.className = 'cbtn edt'; edt.textContent = '✎'; edt.title = 'Переименовать';
+  edt.onclick = e => { e.stopPropagation(); startEdit(card, item); };
+  const del = document.createElement('button');
+  del.className = 'cbtn del'; del.textContent = '✕'; del.title = 'Удалить';
+  del.onclick = e => { e.stopPropagation(); items = items.filter(i=>i.id!==item.id); save(); render(); toast('🗑 «'+item.title+'» удалено'); };
+  acts.append(edt, del);
+  card.appendChild(acts);
+  const ttl = document.createElement('div');
+  ttl.className = 'ctitle'; ttl.textContent = item.title; ttl.title = item.title;
+  card.appendChild(ttl);
+  if(searchQuery && !item.title.toLowerCase().includes(searchQuery)) card.classList.add('hidden-card');
+  return card;
+}
+function startEdit(card, item){
+  const ttl = card.querySelector('.ctitle');
+  const inp = document.createElement('input');
+  inp.className = 'edit-input'; inp.value = item.title; inp.maxLength = 60;
+  ttl.replaceWith(inp); inp.focus(); inp.select();
+  const commit = () => { const v = inp.value.trim(); if(v) item.title = v; save(); render(); toast('✎ Название обновлено'); };
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); });
+}
+function render(){
+  const list = $('#tierList');
+  list.innerHTML = '';
+  TIERS.forEach((t, idx) => {
+    // Если выбран конкретный тир, скрываем остальные
+    if(activeTier !== 'ALL' && activeTier !== t.key){
+      return; // пропускаем рендер остальных тиров
+    }
+    const row = document.createElement('div');
+    row.className = 'tier-row t-' + t.key;
+    const label = document.createElement('div');
+    label.className = 'tier-label';
+    label.innerHTML = '<span class="hud c1"></span><span class="hud c2"></span><span class="hud c3"></span><span class="hud c4"></span><div class="scan"></div>';
+    if(t.key==='S'){
+      label.insertAdjacentHTML('beforeend','<span class="crown">👑</span>');
+      for(let k=0;k<7;k++){
+        const sp = document.createElement('span');
+        sp.className = 'spark';
+        sp.style.left = (8+Math.random()*84)+'%';
+        sp.style.animationDelay = (Math.random()*3)+'s';
+        sp.style.animationDuration = (2.2+Math.random()*2)+'s';
+        label.appendChild(sp);
+      }
+    }
+    label.appendChild(build3DLetter(t.key, idx));
+    label.insertAdjacentHTML('beforeend','<div class="tname">'+t.name+'</div><div class="tdesc">'+t.desc+'</div>');
+    row.appendChild(label);
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            const config = dragonConfigs[currentTier];
-            if (!config) return;
+    const zone = document.createElement('div');
+    zone.className = 'tier-zone';
+    zone.dataset.tier = t.key;
+    const tierItems = items.filter(i => i.tier === t.key);
+    if(!tierItems.length){
+      const em = document.createElement('div');
+      em.className = 'zone-empty';
+      em.textContent = t.key==='S' ? '✦ место для шедевров — перетащи или добавь ✦' : '— перетащи карточки сюда —';
+      zone.appendChild(em);
+    }
+    tierItems.forEach(i => zone.appendChild(makeCard(i)));
 
-            // Move dragon across screen or follow mouse slightly
-            const time = Date.now() * 0.002;
-            const centerX = canvas.width / 2 + Math.sin(time) * 100;
-            const centerY = canvas.height / 2 + Math.cos(time * 1.5) * 50;
+    zone.addEventListener('dragover', e => {
+      e.preventDefault();
+      zone.classList.add('over');
+      const dragging = document.querySelector('.card.dragging');
+      if(!dragging) return;
+      const after = getAfter(zone, e.clientX);
+      const emptyMsg = zone.querySelector('.zone-empty');
+      if(emptyMsg) emptyMsg.style.display = 'none';
+      if(after == null) zone.appendChild(dragging);
+      else zone.insertBefore(dragging, after);
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('over');
+      if(!draggedId) return;
+      const it = items.find(i=>i.id===draggedId);
+      if(!it) return;
+      const newTier = zone.dataset.tier;
+      const cardsInZone = [...zone.querySelectorAll('.card')].map(c=>c.dataset.id);
+      items = items.filter(i=>i.id!==draggedId);
+      it.tier = newTier;
+      const idxAfter = cardsInZone.indexOf(draggedId);
+      let insertBeforeId = null;
+      for(let k=idxAfter+1;k<cardsInZone.length;k++){
+        if(items.some(i=>i.id===cardsInZone[k])){ insertBeforeId = cardsInZone[k]; break; }
+      }
+      if(insertBeforeId){
+        const bi = items.findIndex(i=>i.id===insertBeforeId);
+        items.splice(bi,0,it);
+      } else {
+        let li=-1; items.forEach((o,i)=>{ if(o.tier===newTier) li=i; });
+        items.splice(li+1,0,it);
+      }
+      save(); render();
+      if(newTier==='S') goldBurst();
+    });
+    row.appendChild(zone);
+    list.appendChild(row);
+  });
+  renderStats();
+}
+function getAfter(zone, x){
+  const els = [...zone.querySelectorAll('.card:not(.dragging)')];
+  return els.reduce((closest, el) => {
+    const r = el.getBoundingClientRect();
+    const offset = x - r.left - r.width/2;
+    if(offset < 0 && offset > closest.offset) return {offset, el};
+    return closest;
+  }, {offset:-Infinity, el:null}).el;
+}
+function renderStats(){
+  const st = $('#stats');
+  st.innerHTML = '';
+  const total = document.createElement('span');
+  total.className = 'stat-pill';
+  total.style.cssText = 'border-color:#fff;color:#fff';
+  total.textContent = 'Σ ' + items.length;
+  st.appendChild(total);
+  const colors = {S:'#ffd75e',A:'#ff2fd6',B:'#00f0ff',C:'#45ff9c',D:'#ff5470'};
+  TIERS.forEach(t=>{
+    const p = document.createElement('span');
+    p.className = 'stat-pill';
+    p.style.cssText = 'border-color:'+colors[t.key]+';color:'+colors[t.key];
+    p.textContent = t.key+': ' + items.filter(i=>i.tier===t.key).length;
+    st.appendChild(p);
+  });
+}
 
-            // Draw Dragon
-            drawDragonHead(centerX, centerY, config);
+/* ---------- DRAG & TILT ---------- */
+document.addEventListener('dragstart', e => {
+  const card = e.target.closest('.card');
+  if(!card) return;
+  draggedId = card.dataset.id;
+  card.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+});
+document.addEventListener('dragend', e => {
+  const card = e.target.closest('.card');
+  if(card) card.classList.remove('dragging');
+  draggedId = null;
+  document.querySelectorAll('.tier-zone.over').forEach(z=>z.classList.remove('over'));
+});
+document.addEventListener('mousemove', e => {
+  const card = e.target.closest('.card');
+  document.querySelectorAll('.card.tilted').forEach(c=>{ if(c!==card){ c.classList.remove('tilted'); c.style.transform=''; }});
+  if(!card || card.classList.contains('dragging')) return;
+  const r = card.getBoundingClientRect();
+  const px = (e.clientX - r.left)/r.width - .5;
+  const py = (e.clientY - r.top)/r.height - .5;
+  card.classList.add('tilted');
+  card.style.transform = 'perspective(600px) rotateX('+(py*-14)+'deg) rotateY('+(px*14)+'deg) scale(1.07)';
+  card.style.zIndex = 5;
+});
 
-            // Spawn Particles
-            for (let i = 0; i < 5; i++) {
-                particles.push(new Particle(centerX, centerY, config));
-            }
+/* ---------- ФОРМА ---------- */
+document.querySelectorAll('.img-tab').forEach(tab=>{
+  tab.onclick = () => {
+    document.querySelectorAll('.img-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const isUrl = tab.dataset.src === 'url';
+    $('#urlBox').style.display = isUrl ? '' : 'none';
+    $('#fileBox').style.display = isUrl ? 'none' : '';
+    pendingImg = isUrl ? ($('#animeUrl').value.trim() || null) : null;
+    updatePreview();
+  };
+});
+$('#animeUrl').addEventListener('input', e => { pendingImg = e.target.value.trim() || null; updatePreview(); });
+$('#animeFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 420/Math.max(img.width, img.height));
+      const cv = document.createElement('canvas');
+      cv.width = img.width*scale; cv.height = img.height*scale;
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      pendingImg = cv.toDataURL('image/jpeg', .82);
+      updatePreview();
+      toast('📁 Файл загружен');
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(f);
+});
+function updatePreview(){
+  const pv = $('#preview');
+  if(pendingImg){
+    pv.innerHTML = '';
+    const im = document.createElement('img');
+    im.src = pendingImg;
+    im.onerror = ()=>{ pv.classList.remove('ok'); pv.innerHTML='🖼'; };
+    pv.appendChild(im);
+    pv.classList.add('ok');
+  } else { pv.classList.remove('ok'); pv.innerHTML = '🖼'; }
+}
+$('#addBtn').onclick = () => {
+  const title = $('#animeTitle').value.trim();
+  const tier = $('#animeTier').value;
+  if(!title){ toast('⚠ Впиши название аниме!','err'); $('#animeTitle').focus(); return; }
+  if(!pendingImg){ toast('⚠ Добавь фото: ссылкой или файлом!','err'); return; }
+  items.push({id:uid(), title, img:pendingImg, tier, ts:Date.now()});
+  save(); render();
+  toast((tier==='S' ? '👑 «'+title+'» — в ЗОЛОТОМ тире S!' : '✨ «'+title+'» добавлено в тир '+tier), tier==='S' ? 'gold' : '');
+  if(tier==='S') goldBurst();
+  $('#animeTitle').value = ''; $('#animeUrl').value = ''; pendingImg = null; updatePreview();
+};
+$('#sampleBtn').onclick = () => {
+  let added = 0;
+  SAMPLES.forEach(s=>{ if(!items.some(i=>i.title===s.title)){ items.push({id:uid(), ...s, ts:Date.now()}); added++; } });
+  if(added){ save(); render(); goldBurst(); toast('🎁 Примеры добавлены — смотри, как всё работает!','gold'); }
+  else toast('Примеры уже в списке 😉');
+};
+function goldBurst(){
+  if(!window.confetti) return;
+  confetti({particleCount:130, spread:80, origin:{y:.35}, colors:['#ffd75e','#fff3c4','#e0a92e','#ff8c2e','#ffffff'], scalar:1.1});
+}
 
-            // Update and Draw Particles
-            for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update();
-                particles[i].draw();
-                if (particles[i].life <= 0 || particles[i].size <= 0.1) {
-                    particles.splice(i, 1);
-                }
-            }
+/* ---------- ПОИСК / ЭКСПОРТ / ИМПОРТ / ОЧИСТКА ---------- */
+$('#searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('.card').forEach(c=>{
+    const t = c.querySelector('.ctitle');
+    if(!t) return;
+    c.classList.toggle('hidden-card', !!searchQuery && !t.textContent.toLowerCase().includes(searchQuery));
+  });
+});
+$('#exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(items,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'anime-tier-list.json';
+  a.click();
+  toast('⬇ Тир-лист экспортирован в файл');
+};
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const arr = JSON.parse(r.result);
+      if(!Array.isArray(arr)) throw 0;
+      arr.forEach(o=>{ if(o.title && o.img && o.tier) items.push({id:uid(), title:String(o.title), img:String(o.img), tier:o.tier, ts:Date.now()}); });
+      save(); render(); toast('⬆ Импорт завершён!');
+    }catch(err){ toast('⚠ Неверный файл импорта','err'); }
+  };
+  r.readAsText(f);
+  e.target.value = '';
+});
+$('#clearBtn').onclick = () => $('#clearModal').classList.add('open');
+$('#clearNo').onclick = () => $('#clearModal').classList.remove('open');
+$('#clearYes').onclick = () => { items = []; save(); render(); $('#clearModal').classList.remove('open'); toast('🗑 Тир-лист очищен'); };
 
-            // Draw Text Name
-            ctx.save();
-            ctx.font = 'bold 24px "Segoe UI"';
-            ctx.fillStyle = config.color;
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = config.glow;
-            ctx.textAlign = 'center';
-            ctx.fillText(config.name, centerX, centerY + 80);
-            ctx.restore();
+/* ---------- RANDOM ---------- */
+function showRandom(){
+  if(!items.length){ toast('⚠ Список пуст — добавь аниме!','err'); return; }
+  const pick = items[Math.floor(Math.random()*items.length)];
+  const fc = $('#flipCard');
+  fc.querySelector('img').src = pick.img;
+  fc.querySelector('.fc-tier').textContent = pick.tier;
+  $('#flipTitle').textContent = pick.title;
+  fc.style.animation = 'none'; void fc.offsetWidth; fc.style.animation = '';
+  $('#randomModal').classList.add('open');
+}
+$('#randomBtn').onclick = showRandom;
+$('#randomAgain').onclick = showRandom;
+$('#randomClose').onclick = () => $('#randomModal').classList.remove('open');
+document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open')); });
 
-            animationId = requestAnimationFrame(animate);
-        }
+/* ---------- ПАДАЮЩИЕ ЛИСТЬЯ ---------- */
+(function(){
+  const box = $('#leaves');
+  const EMO = ['🍁','🍂','🍁','🍃'];
+  for(let i=0;i<16;i++){
+    const l = document.createElement('div');
+    l.className = 'leaf';
+    l.style.left = Math.random()*100+'vw';
+    l.style.setProperty('--d', (9+Math.random()*10)+'s');
+    l.style.animationDelay = (-Math.random()*18)+'s';
+    const inner = document.createElement('span');
+    inner.textContent = EMO[i%EMO.length];
+    inner.style.fontSize = (13+Math.random()*18)+'px';
+    inner.style.opacity = (.5+Math.random()*.5);
+    inner.style.setProperty('--s', (2+Math.random()*2.5)+'s');
+    l.appendChild(inner);
+    box.appendChild(l);
+  }
+})();
 
-        function spawnDragon(tier) {
-            if (currentTier === tier && dragonActive) return;
-            
-            currentTier = tier;
-            dragonActive = true;
-            particles = []; // Clear old particles
-            
-            if (animationId) cancelAnimationFrame(animationId);
-            animate();
-        }
+/* ---------- THREE.JS: ОСЕННИЕ ЧАСТИЦЫ + 3D ФИГУРЫ ---------- */
+(function(){
+  if(!window.THREE) return;
+  const canvas = $('#bg3d');
+  const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth, innerHeight);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, .1, 1000);
+  camera.position.z = 30;
 
-        function stopDragon() {
-            dragonActive = false;
-            currentTier = null;
-            // Fade out effect could be added here, but immediate stop is cleaner for switching
-            setTimeout(() => {
-                if (!dragonActive) {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    particles = [];
-                }
-            }, 100);
-        }
+  const COUNT = 650;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(COUNT*3), col = new Float32Array(COUNT*3), spd = new Float32Array(COUNT);
+  const palette = [new THREE.Color(0xffb347), new THREE.Color(0xff7f2a), new THREE.Color(0xffd700), new THREE.Color(0xd9412b), new THREE.Color(0xffe9a8)];
+  for(let i=0;i<COUNT;i++){
+    pos[i*3]   = (Math.random()-.5)*130;
+    pos[i*3+1] = (Math.random()-.5)*90;
+    pos[i*3+2] = (Math.random()-.5)*60 - 5;
+    spd[i] = .02 + Math.random()*.05;
+    const c = palette[Math.floor(Math.random()*palette.length)];
+    col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col,3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({size:.42, vertexColors:true, transparent:true, opacity:.85, blending:THREE.AdditiveBlending, depthWrite:false}));
+  scene.add(pts);
 
-        // --- TIER FILTERING LOGIC ---
-        function filterTier(tier) {
-            const sections = document.querySelectorAll('.tier-section');
-            
-            sections.forEach(section => {
-                const id = section.id.replace('tier-', '');
-                if (id === tier) {
-                    section.classList.remove('hidden', 'fade-out');
-                    // Small timeout to allow display:block to apply before opacity transition
-                    setTimeout(() => {
-                        section.style.opacity = '1';
-                        section.style.transform = 'translateY(0) scale(1)';
-                    }, 10);
-                } else {
-                    section.classList.add('fade-out');
-                    setTimeout(() => {
-                        section.classList.add('hidden');
-                    }, 500); // Wait for transition
-                }
-            });
+  const mk = (g, c, x, y, z) => {
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({color:c, wireframe:true, transparent:true, opacity:.22}));
+    m.position.set(x,y,z); scene.add(m); return m;
+  };
+  const knot = mk(new THREE.TorusKnotGeometry(4.2,1.1,90,12), 0xffd75e, 16, 8, -12);
+  const ico  = mk(new THREE.IcosahedronGeometry(4.5,0), 0xff5e3a, -17, -8, -10);
+  const oct  = mk(new THREE.OctahedronGeometry(3.4,0), 0xffb347, -14, 10, -14);
 
-            // Scroll to the visible tier
-            setTimeout(() => {
-                const activeSection = document.getElementById(`tier-${tier}`);
-                if(activeSection) {
-                    activeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 100);
-        }
+  let mx=0,my=0;
+  addEventListener('mousemove', e=>{ mx=(e.clientX/innerWidth-.5); my=(e.clientY/innerHeight-.5); });
+  addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 
-        function showAllTiers() {
-            const sections = document.querySelectorAll('.tier-section');
-            sections.forEach((section, index) => {
-                section.classList.remove('hidden');
-                // Staggered fade in
-                setTimeout(() => {
-                    section.classList.remove('fade-out');
-                    section.style.opacity = '1';
-                    section.style.transform = 'translateY(0) scale(1)';
-                }, index * 100);
-            });
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+  let t=0;
+  (function loop(){
+    t += .005;
+    const p = geo.attributes.position.array;
+    for(let i=0;i<COUNT;i++){
+      p[i*3+1] -= spd[i];
+      p[i*3]   += Math.sin(t*2 + i)*.012;
+      if(p[i*3+1] < -45) p[i*3+1] = 45;
+    }
+    geo.attributes.position.needsUpdate = true;
+    knot.rotation.x += .006; knot.rotation.y += .009; knot.position.y = 8 + Math.sin(t*2)*1.6;
+    ico.rotation.x  -= .005; ico.rotation.y  += .007; ico.position.y  = -8 + Math.cos(t*1.6)*1.8;
+    oct.rotation.y  += .008; oct.position.y  = 10 + Math.sin(t*1.2)*1.4;
+    camera.position.x += (mx*6 - camera.position.x)*.04;
+    camera.position.y += (-my*4 - camera.position.y)*.04;
+    camera.lookAt(scene.position);
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  })();
+})();
 
-        // Initialize with all visible
-        showAllTiers();
-    </script>
+/* параллакс фона */
+addEventListener('mousemove', e => {
+  const bg = $('#bgImage');
+  const dx = (e.clientX/innerWidth-.5)*10, dy = (e.clientY/innerHeight-.5)*8;
+  bg.style.transform = 'scale(1.12) translate('+(-dx)+'px,'+(-dy)+'px)';
+});
+
+/* ---------- НАВИГАЦИЯ ПО ТИРАМ S A B C D ---------- */
+let activeTier = 'ALL';
+
+function renderTierNav(){
+  const nav = $('#tierNav');
+  nav.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.className = 'tier-nav-btn' + (activeTier === 'ALL' ? ' active' : '');
+  allBtn.textContent = '🌐';
+  allBtn.title = 'Показать все тиры';
+  allBtn.onclick = () => switchTier('ALL');
+  nav.appendChild(allBtn);
+  
+  TIERS.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tier-nav-btn ' + t.key + (activeTier === t.key ? ' active' : '');
+    btn.textContent = t.key;
+    btn.title = 'Тир ' + t.name;
+    btn.onclick = () => switchTier(t.key);
+    nav.appendChild(btn);
+  });
+}
+
+function switchTier(tier){
+  activeTier = tier;
+  renderTierNav();
+  render();
+  if(tier !== 'ALL'){
+    const targetRow = document.querySelector('.tier-row.t-' + tier);
+    if(targetRow){
+      targetRow.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }
+}
+
+render();
+renderTierNav();
+</script>
 </body>
 </html>
