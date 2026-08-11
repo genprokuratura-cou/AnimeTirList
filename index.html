@@ -72,6 +72,43 @@ body{background:var(--bg);color:var(--txt);font-family:'Rubik',sans-serif;min-he
 .tier-nav-btn:hover::before{opacity:1}
 @media(max-width:760px){.tier-nav{display:none}}
 
+/* ---------- ЭФФЕКТ ДРАКОНА ПРИ НАВЕДЕНИИ ---------- */
+.dragon-container{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:400px;height:400px;pointer-events:none;z-index:99;
+  opacity:0;transition:opacity .4s ease;
+}
+.dragon-container.active{opacity:1}
+.dragon-canvas{width:100%;height:100%}
+.dragon-particles{position:absolute;inset:0;overflow:hidden}
+.dragon-particle{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(circle, var(--particle-color) 0%, transparent 70%);
+  animation:dragonParticle var(--particle-duration) ease-out forwards;
+  filter:blur(2px);
+}
+@keyframes dragonParticle{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}
+}
+.dragon-flame{
+  position:absolute;width:8px;height:8px;border-radius:50%;
+  background:radial-gradient(circle, var(--flame-color) 0%, transparent 80%);
+  filter:blur(4px);animation:dragonFlame var(--flame-duration) ease-out forwards;
+}
+@keyframes dragonFlame{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  100%{transform:translate(var(--fx),var(--fy)) scale(0.2);opacity:0}
+}
+.dragon-title{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  font-family:'Unbounded',sans-serif;font-size:18px;font-weight:900;
+  color:var(--dragon-title-color);text-shadow:0 0 20px var(--dragon-title-glow);
+  white-space:nowrap;letter-spacing:3px;text-transform:uppercase;
+  opacity:0;transition:opacity .3s ease;
+}
+.dragon-container.active .dragon-title{opacity:1}
+
 /* ---------- 3D ПЕРЕХОД МЕЖДУ ТИРАМИ ---------- */
 .tier-section{
   opacity:1;transform:translateZ(0);
@@ -361,6 +398,13 @@ footer b{color:#ff8c2e}
 <div class="orb orb1"></div>
 <div class="orb orb2"></div>
 <div class="orb orb3"></div>
+
+<!-- Контейнер для эффекта дракона -->
+<div class="dragon-container" id="dragonContainer">
+  <canvas class="dragon-canvas" id="dragonCanvas"></canvas>
+  <div class="dragon-particles" id="dragonParticles"></div>
+  <div class="dragon-title" id="dragonTitle"></div>
+</div>
 
 <div class="wrap">
 
@@ -930,6 +974,280 @@ function switchTier(tier){
 
 render();
 renderTierNav();
+
+// ---------- ЭФФЕКТ ДРАКОНА ПРИ НАВЕДЕНИИ НА ТИРЫ ----------
+const dragonContainer = document.getElementById('dragonContainer');
+const dragonCanvas = document.getElementById('dragonCanvas');
+const dragonParticles = document.getElementById('dragonParticles');
+const dragonTitle = document.getElementById('dragonTitle');
+
+const dragonData = {
+  S: {
+    name: 'Королевский Дракон',
+    colors: { primary: '#ffd75e', secondary: '#fff3c4', flame: '#ff8c00' },
+    titleColor: '#ffd75e', titleGlow: 'rgba(255,215,94,0.8)'
+  },
+  A: {
+    name: 'Мистический Дракон',
+    colors: { primary: '#ff2fd6', secondary: '#ff9dee', flame: '#ff00aa' },
+    titleColor: '#ff2fd6', titleGlow: 'rgba(255,47,214,0.8)'
+  },
+  B: {
+    name: 'Ледяной Дракон',
+    colors: { primary: '#00f0ff', secondary: '#a8fbff', flame: '#00a8b8' },
+    titleColor: '#00f0ff', titleGlow: 'rgba(0,240,255,0.8)'
+  },
+  C: {
+    name: 'Природный Дракон',
+    colors: { primary: '#45ff9c', secondary: '#c2ffdd', flame: '#00b86e' },
+    titleColor: '#45ff9c', titleGlow: 'rgba(69,255,156,0.8)'
+  },
+  D: {
+    name: 'Огненный Дракон',
+    colors: { primary: '#ff5470', secondary: '#ffb3c0', flame: '#d9412b' },
+    titleColor: '#ff5470', titleGlow: 'rgba(255,84,112,0.8)'
+  }
+};
+
+let dragonCtx = null;
+let dragonAnimationId = null;
+
+function initDragonCanvas() {
+  const rect = dragonContainer.getBoundingClientRect();
+  dragonCanvas.width = rect.width;
+  dragonCanvas.height = rect.height;
+  dragonCtx = dragonCanvas.getContext('2d');
+}
+
+function createDragonEffect(tier) {
+  const data = dragonData[tier];
+  if (!data) return;
+  
+  // Устанавливаем цвета для заголовка
+  dragonTitle.style.setProperty('--dragon-title-color', data.titleColor);
+  dragonTitle.style.setProperty('--dragon-title-glow', data.titleGlow);
+  dragonTitle.textContent = data.name;
+  
+  // Показываем контейнер
+  dragonContainer.classList.add('active');
+  
+  // Инициализируем canvas если нужно
+  if (!dragonCtx) initDragonCanvas();
+  
+  // Очищаем предыдущие частицы
+  dragonParticles.innerHTML = '';
+  
+  // Создаем эффект дракона с частицами и пламенем
+  let particleCount = 0;
+  const maxParticles = 80;
+  
+  function createParticle() {
+    if (particleCount >= maxParticles || !dragonContainer.classList.contains('active')) return;
+    
+    const particle = document.createElement('div');
+    particle.className = 'dragon-particle';
+    
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 50 + Math.random() * 100;
+    const tx = Math.cos(angle) * distance;
+    const ty = Math.sin(angle) * distance - 50;
+    
+    const size = 4 + Math.random() * 8;
+    const duration = 0.8 + Math.random() * 0.6;
+    
+    particle.style.cssText = `
+      left: ${50 + (Math.random() - 0.5) * 40}%;
+      top: ${50 + (Math.random() - 0.5) * 40}%;
+      width: ${size}px;
+      height: ${size}px;
+      --particle-color: ${Math.random() > 0.5 ? data.colors.primary : data.colors.secondary};
+      --particle-duration: ${duration}s;
+      --tx: ${tx}px;
+      --ty: ${ty}px;
+    `;
+    
+    dragonParticles.appendChild(particle);
+    particleCount++;
+    
+    setTimeout(() => {
+      if (particle.parentNode) particle.remove();
+      particleCount--;
+    }, duration * 1000);
+  }
+  
+  function createFlame() {
+    if (!dragonContainer.classList.contains('active')) return;
+    
+    const flame = document.createElement('div');
+    flame.className = 'dragon-flame';
+    
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+    const distance = 80 + Math.random() * 60;
+    const fx = Math.cos(angle) * distance;
+    const fy = Math.sin(angle) * distance;
+    
+    const size = 6 + Math.random() * 6;
+    const duration = 0.5 + Math.random() * 0.4;
+    
+    flame.style.cssText = `
+      left: ${50 + (Math.random() - 0.5) * 20}%;
+      top: ${40 + Math.random() * 20}%;
+      width: ${size}px;
+      height: ${size}px;
+      --flame-color: ${data.colors.flame};
+      --flame-duration: ${duration}s;
+      --fx: ${fx}px;
+      --fy: ${fy}px;
+    `;
+    
+    dragonParticles.appendChild(flame);
+    
+    setTimeout(() => {
+      if (flame.parentNode) flame.remove();
+    }, duration * 1000);
+  }
+  
+  // Рисуем силуэт дракона на canvas
+  function drawDragon() {
+    if (!dragonCtx || !dragonContainer.classList.contains('active')) return;
+    
+    const ctx = dragonCtx;
+    const w = dragonCanvas.width;
+    const h = dragonCanvas.height;
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    // Рисуем контур дракона
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    
+    // Тело дракона
+    ctx.beginPath();
+    ctx.strokeStyle = data.colors.primary;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = data.colors.primary;
+    ctx.shadowBlur = 20;
+    
+    // Голова дракона
+    ctx.moveTo(-30, -20);
+    ctx.quadraticCurveTo(-20, -50, 20, -40);
+    ctx.quadraticCurveTo(50, -30, 40, -10);
+    ctx.quadraticCurveTo(60, 10, 40, 30);
+    ctx.quadraticCurveTo(20, 50, -20, 40);
+    ctx.quadraticCurveTo(-50, 30, -40, 10);
+    ctx.quadraticCurveTo(-60, -10, -30, -20);
+    ctx.closePath();
+    ctx.stroke();
+    
+    // Крылья
+    ctx.beginPath();
+    ctx.moveTo(-20, 0);
+    ctx.quadraticCurveTo(-60, -30, -80, -10);
+    ctx.quadraticCurveTo(-60, 10, -40, 5);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(20, 0);
+    ctx.quadraticCurveTo(60, -30, 80, -10);
+    ctx.quadraticCurveTo(60, 10, 40, 5);
+    ctx.stroke();
+    
+    // Хвост
+    ctx.beginPath();
+    ctx.moveTo(-30, 20);
+    ctx.quadraticCurveTo(-50, 40, -60, 60);
+    ctx.quadraticCurveTo(-50, 80, -30, 70);
+    ctx.stroke();
+    
+    // Глаза дракона
+    ctx.fillStyle = data.colors.flame;
+    ctx.shadowColor = data.colors.flame;
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(-10, -10, 3, 0, Math.PI * 2);
+    ctx.arc(10, -10, 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+    
+    dragonAnimationId = requestAnimationFrame(drawDragon);
+  }
+  
+  // Запускаем анимацию дракона
+  drawDragon();
+  
+  // Создаем частицы и пламя
+  const particleInterval = setInterval(createParticle, 50);
+  const flameInterval = setInterval(createFlame, 80);
+  
+  // Сохраняем интервалы для очистки
+  dragonContainer.dataset.particleInterval = particleInterval;
+  dragonContainer.dataset.flameInterval = flameInterval;
+}
+
+function hideDragonEffect() {
+  dragonContainer.classList.remove('active');
+  
+  // Очищаем интервалы
+  if (dragonContainer.dataset.particleInterval) {
+    clearInterval(parseInt(dragonContainer.dataset.particleInterval));
+  }
+  if (dragonContainer.dataset.flameInterval) {
+    clearInterval(parseInt(dragonContainer.dataset.flameInterval));
+  }
+  
+  // Очищаем canvas анимацию
+  if (dragonAnimationId) {
+    cancelAnimationFrame(dragonAnimationId);
+    dragonAnimationId = null;
+  }
+  
+  // Очищаем частицы
+  setTimeout(() => {
+    dragonParticles.innerHTML = '';
+    if (dragonCtx) {
+      dragonCtx.clearRect(0, 0, dragonCanvas.width, dragonCanvas.height);
+    }
+  }, 400);
+}
+
+// Добавляем обработчики событий для кнопок навигации
+document.querySelectorAll('.tier-nav-btn').forEach(btn => {
+  btn.addEventListener('mouseenter', function() {
+    const tier = this.textContent.trim();
+    if (tier && tier !== 'ALL' && tier !== '🌐') {
+      createDragonEffect(tier);
+    }
+  });
+  
+  btn.addEventListener('mouseleave', function() {
+    hideDragonEffect();
+  });
+});
+
+// Также добавляем обработчики для самих тиров
+document.querySelectorAll('.tier-label').forEach(label => {
+  label.addEventListener('mouseenter', function() {
+    const tierRow = this.closest('.tier-row');
+    if (tierRow) {
+      const tier = tierRow.className.match(/t-([SABCD])/)?.[1];
+      if (tier) {
+        createDragonEffect(tier);
+      }
+    }
+  });
+  
+  label.addEventListener('mouseleave', function() {
+    hideDragonEffect();
+  });
+});
+
+// Пересоздаем canvas при изменении размера окна
+window.addEventListener('resize', () => {
+  if (dragonCtx) {
+    initDragonCanvas();
+  }
+});
 </script>
 </body>
 </html>
